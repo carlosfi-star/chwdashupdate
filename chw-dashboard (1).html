@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arizona CHW Certification Program Dashboard</title>
+
+    <!-- Leaflet JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <!-- Danfo.js -->
+    <script src="https://cdn.jsdelivr.net/npm/danfojs@1.1.2/lib/bundle.min.js"></script>
+
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <!-- AG Grid -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.3/dist/ag-grid-community.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.3/dist/styles/ag-grid.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.3/dist/styles/ag-theme-quartz.css" />
+
+    <!-- Day.js -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrBefore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrAfter.js"></script>
+
+    <!-- Floating UI (tooltips) -->
+    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.6.3/dist/floating-ui.dom.umd.min.js"></script>
+
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary:    #003DA5;
+            --secondary:  #005B96;
+            --accent:     #0078D4;
+            --success:    #1A8A4A;
+            --warning:    #D4860A;
+            --danger:     #C0392B;
+            --bg:         #EEF2F8;
+            --surface:    #FFFFFF;
+            --surface2:   #F4F7FB;
+            --text:       #1A2332;
+            --text-muted: #596475;
+            --border:     #D8E0EC;
+            --shadow-sm:  0 1px 4px rgba(0,40,100,.08);
+            --shadow:     0 4px 16px rgba(0,40,100,.10);
+            --shadow-lg:  0 8px 32px rgba(0,40,100,.14);
+            --radius:     10px;
+            --radius-lg:  16px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1600px; margin: 0 auto; }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, #0055CC 100%);
+            color: #fff;
+            padding: 28px 32px;
+            border-radius: var(--radius-lg);
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+        header h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: -.5px; margin-bottom: 4px; }
+        header p  { font-size: .95rem; opacity: .8; }
+        .header-meta {
+            display: flex; gap: 24px; margin-top: 16px; flex-wrap: wrap;
+            font-size: .85rem; opacity: .9;
+        }
+        .header-meta span { display: flex; align-items: center; gap: 6px; }
+        .header-meta strong { font-weight: 700; }
+
+        /* ── Bento grid ── */
+        .bento {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 1100px) { .bento { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 760px)  { .bento { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px)  { .bento { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: transform .25s, box-shadow .25s;
+        }
+        .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+
+        .span-2 { grid-column: span 2; }
+        .span-3 { grid-column: span 3; }
+        .span-4 { grid-column: span 4; }
+        .span-6 { grid-column: span 6; }
+
+        @media (max-width: 1100px) { .span-6 { grid-column: span 4; } .span-4, .span-3 { grid-column: span 4; } }
+        @media (max-width: 760px)  { .span-2, .span-3, .span-4, .span-6 { grid-column: span 2; } }
+        @media (max-width: 480px)  { .span-2, .span-3, .span-4, .span-6 { grid-column: span 1; } }
+
+        /* ── KPI cards ── */
+        .kpi { display: flex; flex-direction: column; }
+        .kpi-label {
+            font-size: .72rem; font-weight: 700; letter-spacing: .8px;
+            text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+        }
+        .kpi-value { font-size: 2.4rem; font-weight: 800; color: var(--primary); line-height: 1; margin-bottom: 4px; }
+        .kpi-sub   { font-size: .8rem; color: var(--text-muted); }
+
+        /* ── Tabs ── */
+        .tabs-wrapper {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 0;
+        }
+        .tab-bar {
+            display: flex; gap: 0; padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto; scrollbar-width: none;
+        }
+        .tab-bar::-webkit-scrollbar { display: none; }
+        .tab-btn {
+            padding: 14px 18px; background: none; border: none;
+            font-size: .85rem; font-weight: 600; cursor: pointer;
+            color: var(--text-muted); border-bottom: 3px solid transparent;
+            white-space: nowrap; transition: all .2s;
+        }
+        .tab-btn:hover  { color: var(--primary); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .tab-pane { display: none; padding: 22px; }
+        .tab-pane.active { display: block; }
+
+        /* ── Charts ── */
+        .card-title {
+            font-size: .9rem; font-weight: 700; color: var(--primary);
+            margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
+        }
+        .echarts-box { width: 100%; height: 340px; }
+        .echarts-box.tall { height: 440px; }
+        .echarts-box.short { height: 280px; }
+
+        /* ── Leaflet map ── */
+        #leafletMap { height: 430px; border-radius: var(--radius); z-index: 1; }
+
+        /* ── Legend ── */
+        .legend { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 12px; font-size: .78rem; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+        /* ── Metric cards (sidebar) ── */
+        .metric-row {
+            background: var(--surface2); padding: 13px 15px; border-radius: var(--radius);
+            margin-bottom: 10px; border-left: 4px solid var(--primary);
+            transition: transform .2s;
+        }
+        .metric-row:hover { transform: translateX(3px); }
+        .metric-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); }
+        .metric-value { font-size: 1.5rem; font-weight: 800; color: var(--primary); margin-top: 2px; }
+
+        /* ── AG Grid wrapper ── */
+        .grid-wrap { height: 420px; margin-top: 12px; }
+        .ag-theme-quartz { --ag-font-size: 13px; --ag-grid-size: 4px; }
+
+        /* ── Filters ── */
+        .filters {
+            background: var(--surface); border-radius: var(--radius-lg);
+            padding: 16px 20px; margin-bottom: 20px;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+            display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; min-width: 180px; }
+        .filter-group label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
+        .filter-group select {
+            padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px;
+            font-size: .9rem; color: var(--text); background: var(--surface);
+            cursor: pointer; transition: border-color .2s;
+        }
+        .filter-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,61,165,.12); }
+        .btn-reset {
+            padding: 8px 18px; background: var(--accent); color: #fff;
+            border: none; border-radius: 7px; font-size: .85rem; font-weight: 600;
+            cursor: pointer; transition: background .2s;
+        }
+        .btn-reset:hover { background: var(--primary); }
+
+        /* ── Efficiency table ── */
+        table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+        thead { background: var(--surface2); border-bottom: 2px solid var(--primary); }
+        th { padding: 9px 12px; text-align: left; font-size: .72rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--primary); }
+        td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+        tbody tr:hover { background: var(--surface2); }
+
+        /* ── Footer ── */
+        footer {
+            margin-top: 28px; padding: 18px 24px; background: var(--surface);
+            border-radius: var(--radius-lg); text-align: center;
+            font-size: .8rem; color: var(--text-muted);
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+        .fade-up { animation: fadeUp .45s ease both; }
+        .delay-1 { animation-delay: .08s; }
+        .delay-2 { animation-delay: .16s; }
+        .delay-3 { animation-delay: .24s; }
+
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #111827; --surface: #1F2937; --surface2: #283444;
+                --text: #F3F4F6; --text-muted: #9CA3AF; --border: #374151;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <header class="fade-up">
+        <h1>🏥 Arizona CHW Certification Dashboard</h1>
+        <p>Real-time Tracking &amp; Performance Analysis — Community Health Workers</p>
+        <div class="header-meta">
+            <span>📊 Total CHWs: <strong id="h-total">—</strong></span>
+            <span>🏢 Organizations: <strong id="h-orgs">—</strong></span>
+            <span>⏰ Updated: <strong id="h-date">—</strong></span>
+        </div>
+    </header>
+
+    <!-- Filters -->
+    <div class="filters fade-up delay-1">
+        <div class="filter-group">
+            <label for="f-county">County</label>
+            <select id="f-county"><option value="">All Counties</option></select>
+        </div>
+        <div class="filter-group">
+            <label for="f-recert">Recertification</label>
+            <select id="f-recert">
+                <option value="">All</option>
+                <option value="yes">Recertified</option>
+                <option value="no">Pending</option>
+            </select>
+        </div>
+        <button class="btn-reset" id="btn-reset">Reset Filters</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-wrapper fade-up delay-2">
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="executive">📈 Executive Summary</button>
+            <button class="tab-btn" data-tab="geographic">🗺️ Geographic Analysis</button>
+            <button class="tab-btn" data-tab="efficiency">⚡ Efficiency</button>
+            <button class="tab-btn" data-tab="forecast">📅 Recert Forecast</button>
+            <button class="tab-btn" data-tab="explorer">📊 Data Explorer</button>
+        </div>
+
+        <!-- ── TAB 1: Executive Summary ── -->
+        <div id="executive" class="tab-pane active">
+            <div class="bento">
+                <div class="card kpi"><div class="kpi-label">Total Certified CHWs</div><div class="kpi-value" id="kpi-total">—</div><div class="kpi-sub">Across Arizona</div></div>
+                <div class="card kpi"><div class="kpi-label">Total Organizations</div><div class="kpi-value" id="kpi-orgs">—</div><div class="kpi-sub">CHW Partners</div></div>
+                <div class="card kpi"><div class="kpi-label">Recertification Rate</div><div class="kpi-value" id="kpi-recert-rate">—</div><div class="kpi-sub">Of certification records</div></div>
+                <div class="card kpi"><div class="kpi-label">Pending Recertification</div><div class="kpi-value" id="kpi-pending">—</div><div class="kpi-sub">CHWs outstanding</div></div>
+
+                <div class="card span-3">
+                    <div class="card-title">🏆 Top 10 Counties by CHW Count</div>
+                    <div id="chart-top10" class="echarts-box"></div>
+                </div>
+                <div class="card span-3">
+                    <div class="card-title">📋 Recertification Status</div>
+                    <div id="chart-recert-pie" class="echarts-box"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── TAB 2: Geographic ── -->
+        <div id="geographic" class="tab-pane">
+            <div class="bento">
+                <div class="card span-4">
+                    <div class="card-title">🗺️ Arizona CHW Density — Interactive Heatmap</div>
+                    <div id="leafletMap"></div>
+                    <div class="legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#90CAF9"></div>Low (1–99)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#0078D4"></div>Medium (100–199)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#003DA5"></div>High (200–499)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#001a4d"></div>Very High (500+)</div>
+                    </div>
+                </div>
+                <div class="card span-2">
+                    <div class="card-title">📍 Geographic Insights</div>
+                    <div class="metric-row"><div class="metric-label">Highest Concentration</div><div class="metric-value" id="geo-high" style="font-size:1rem">—</div></div>
+                    <div class="metric-row"><div class="metric-label">Lowest Concentration</div><div class="metric-value" id="geo-low" style="font-size:1rem">—</div></div>
+                    <div class="metric-row"><div class="metric-label">Avg CHWs / County</div><div class="metric-value" id="geo-avg">—</div></div>
+                    <div class="metric-row"><div class="metric-label">Underserved Counties (&lt;20)</div><div class="metric-value" id="geo-under">—</div></div>
+                </div>
+                <div class="card span-6">
+                    <div class="card-title">🔥 CHW Count by County</div>
+                    <div id="chart-county-bar" class="echarts-box tall"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── TAB 3: Efficiency ── -->
+        <div id="efficiency" class="tab-pane">
+            <div class="bento">
+                <div class="card span-4">
+                    <div class="card-title">⚡ Efficiency Matrix — CHWs vs. Organizations</div>
+                    <div id="chart-scatter" class="echarts-box tall"></div>
+                </div>
+                <div class="card span-2">
+                    <div class="card-title">🏅 CHWs per Organization</div>
+                    <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+                        <table><thead><tr><th>County</th><th>CHWs/Org</th><th>Rating</th></tr></thead>
+                        <tbody id="eff-table"></tbody></table>
+                    </div>
+                </div>
+                <div class="card span-6">
+                    <div class="card-title">📊 County Performance Comparison</div>
+                    <div id="chart-perf" class="echarts-box tall"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── TAB 4: Forecast ── -->
+        <div id="forecast" class="tab-pane">
+            <div class="bento">
+                <div class="card span-4">
+                    <div class="card-title">📅 Forecasted Recertifications Due</div>
+                    <div id="chart-forecast-bar" class="echarts-box"></div>
+                </div>
+                <div class="card span-2">
+                    <div class="card-title">📈 Upcoming Recertifications</div>
+                    <div class="metric-row"><div class="metric-label">Due This Month</div><div class="metric-value" id="f-month">0</div></div>
+                    <div class="metric-row"><div class="metric-label">Due Next 3 Months</div><div class="metric-value" id="f-3m">0</div></div>
+                    <div class="metric-row"><div class="metric-label">Due Next 6 Months</div><div class="metric-value" id="f-6m">0</div></div>
+                </div>
+                <div class="card span-6">
+                    <div class="card-title">🗓️ Monthly Certification Activity</div>
+                    <div id="chart-monthly" class="echarts-box tall"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── TAB 5: Data Explorer ── -->
+        <div id="explorer" class="tab-pane">
+            <div class="bento">
+                <div class="card span-6">
+                    <div class="card-title">📊 County Data Explorer</div>
+                    <div class="grid-wrap ag-theme-quartz" id="grid-county"></div>
+                </div>
+                <div class="card span-6">
+                    <div class="card-title">✅ Certification Records Explorer</div>
+                    <div class="grid-wrap ag-theme-quartz" id="grid-cert"></div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.tabs-wrapper -->
+
+    <footer>
+        Arizona CHW Certification Program Dashboard &nbsp;|&nbsp; Client-side only, no data leaves your browser &nbsp;|&nbsp;
+        Leaflet · ECharts · AG Grid · Danfo.js · Day.js · Floating UI · Animate.css
+    </footer>
+
+</div><!-- /.container -->
+
+<script>
+/* ══════════════════════════════════════════════
+   LIBRARY SAFETY + DAY.JS PLUGINS
+══════════════════════════════════════════════ */
+if (typeof dayjs !== 'undefined') {
+    if (window.dayjs_plugin_isSameOrBefore) dayjs.extend(window.dayjs_plugin_isSameOrBefore);
+    if (window.dayjs_plugin_isSameOrAfter)  dayjs.extend(window.dayjs_plugin_isSameOrAfter);
+}
+
+/* ══════════════════════════════════════════════
+   SAMPLE DATA
+   Edit the values below to update the dashboard.
+══════════════════════════════════════════════ */
+const COUNTY_CSV = `Counties,Total Confirmed CHWs,Total Confirmed Organizations (not exclusive to county)
+Apache,19,4
+Cochise,24,8
+Coconino,58,15
+Gila,31,4
+Graham,1,2
+Greenlee,0,1
+La Paz,29,3
+Maricopa,675,63
+Pima,194,27
+Pinal,31,4
+Mohave,11,3
+Navajo,102,10
+Santa Cruz,53,3
+Yavapai,10,4
+Yuma,79,8
+Cross-County,111,9
+State Total (Inclusive of CHRs),1428,163`;
+
+/* ── Real certification data from new_certification_log.csv ──
+   Columns used:
+     People          → CHW_ID
+     Date Sent       → Certification_Date
+     Re-Certified?   → Recertified y/n  (Y → Yes, N/blank/?? → No)
+   County is assigned proportionally by the same county weights
+   used in the county table (no county column in source file).
+*/
+function buildCertData() {
+    // Raw records parsed from new_certification_log.csv
+    const raw = [
+      [1,"11/1/2022","Y"],[2,"11/1/2022","Y"],[3,"11/1/2022","Y"],[4,"11/1/2022","Y"],
+      [5,"11/1/2022","Y"],[6,"11/1/2022","Y"],[7,"11/1/2022","Y"],[8,"11/1/2022","Y"],
+      [9,"11/1/2022","Y"],[10,"11/1/2022","Y"],[11,"11/1/2022","Y"],[12,"11/1/2022","Y"],
+      [13,"11/1/2022","Y"],[14,"11/1/2022","Y"],[15,"11/1/2022","Y"],[16,"11/1/2022","Y"],
+      [17,"11/1/2022","Y"],[18,"11/1/2022","N"],[19,"11/1/2022","N"],[20,"11/1/2022","N"],
+      [21,"11/1/2022","N"],[22,"11/1/2022","N"],[23,"11/1/2022","N"],[24,"11/1/2022","N"],
+      [25,"11/1/2022","N"],[26,"12/1/2022","Y"],[27,"12/1/2022","Y"],[28,"12/1/2022","Y"],
+      [29,"12/1/2022","Y"],[30,"12/1/2022","Y"],[31,"12/1/2022","N"],[32,"12/1/2022","N"],
+      [33,"1/1/2023","Y"],[34,"1/1/2023","Y"],[35,"1/1/2023","Y"],[36,"2/1/2023","Y"],
+      [37,"2/1/2023","Y"],[38,"2/1/2023","Y"],[39,"2/1/2023","N"],[40,"2/1/2023","N"],
+      [41,"3/1/2023","Y"],[42,"3/1/2023","Y"],[43,"3/1/2023","N"],[44,"3/1/2023","N"],
+      [45,"3/1/2023","N"],[46,"3/1/2023","N"],[47,"3/1/2023","N"],[48,"3/1/2023","N"],
+      [49,"3/1/2023","N"],[50,"3/1/2023","N"],[51,"3/1/2023","N"],[52,"3/1/2023","N"],
+      [53,"3/1/2023","N"],[54,"3/1/2023","N"],[55,"3/1/2023","N"],[56,"3/1/2023","N"],
+      [57,"4/1/2023","Y"],[58,"4/1/2023","Y"],[59,"4/1/2023","Y"],[60,"4/1/2023","Y"],
+      [61,"4/1/2023","Y"],[62,"4/1/2023","Y"],[63,"4/1/2023","Y"],[64,"4/1/2023","Y"],
+      [65,"4/1/2023","Y"],[66,"4/1/2023","Y"],[67,"4/1/2023","Y"],[68,"4/1/2023","Y"],
+      [69,"4/1/2023","Y"],[70,"4/1/2023","Y"],[71,"4/1/2023","N"],[72,"4/1/2023","N"],
+      [73,"4/1/2023","N"],[74,"4/1/2023","N"],[75,"4/1/2023","N"],[76,"4/1/2023","N"],
+      [77,"4/1/2023","N"],[78,"5/1/2023","Y"],[79,"5/1/2023","Y"],[80,"5/1/2023","Y"],
+      [81,"5/1/2023","Y"],[82,"5/1/2023","Y"],[83,"5/1/2023","Y"],[84,"5/1/2023","Y"],
+      [85,"5/1/2023","Y"],[86,"5/1/2023","Y"],[87,"5/1/2023","Y"],[88,"5/1/2023","Y"],
+      [89,"5/1/2023","Y"],[90,"5/1/2023","Y"],[91,"5/1/2023","Y"],[92,"5/1/2023","Y"],
+      [93,"5/1/2023","Y"],[94,"5/1/2023","Y"],[95,"5/1/2023","Y"],[96,"5/1/2023","Y"],
+      [97,"5/1/2023","Y"],[98,"5/1/2023","Y"],[99,"5/1/2023","N"],[100,"5/1/2023","N"],
+      [101,"5/1/2023","N"],[102,"5/1/2023","N"],[103,"5/1/2023","N"],[104,"5/1/2023","N"],
+      [105,"5/1/2023","N"],[106,"5/1/2023","N"],[107,"5/1/2023","N"],[108,"5/1/2023","N"],
+      [109,"5/1/2023","N"],[110,"5/1/2023","N"],[111,"5/1/2023","Y"],[112,"6/5/2023","Y"],
+      [113,"6/5/2023","Y"],[114,"6/5/2023","Y"],[115,"6/5/2023","Y"],[116,"6/5/2023","Y"],
+      [117,"6/5/2023","Y"],[118,"6/5/2023","Y"],[119,"6/5/2023","Y"],[120,"6/5/2023","Y"],
+      [121,"6/5/2023","Y"],[122,"6/5/2023","Y"],[123,"6/5/2023","Y"],[124,"6/5/2023","Y"],
+      [125,"6/5/2023","Y"],[126,"6/5/2023","Y"],[127,"6/5/2023","Y"],[128,"6/5/2023","Y"],
+      [129,"6/5/2023","Y"],[130,"6/5/2023","Y"],[131,"6/5/2023","Y"],[132,"6/5/2023","Y"],
+      [133,"6/5/2023","Y"],[134,"6/5/2023","Y"],[135,"6/5/2023","N"],[136,"6/5/2023","N"],
+      [137,"6/5/2023","N"],[138,"6/5/2023","N"],[139,"6/5/2023","N"],[140,"6/5/2023","N"],
+      [141,"6/5/2023","N"],[142,"6/5/2023","N"],[143,"7/6/2023","Y"],[144,"7/6/2023","Y"],
+      [145,"7/6/2023","Y"],[146,"7/6/2023","Y"],[147,"7/6/2023","Y"],[148,"7/6/2023","Y"],
+      [149,"7/6/2023","Y"],[150,"7/6/2023","Y"],[151,"7/6/2023","Y"],[152,"7/6/2023","Y"],
+      [153,"7/6/2023","Y"],[154,"7/6/2023","Y"],[155,"7/6/2023","Y"],[156,"7/6/2023","Y"],
+      [157,"7/6/2023","Y"],[158,"7/6/2023","Y"],[159,"7/6/2023","Y"],[160,"7/6/2023","Y"],
+      [161,"7/6/2023","Y"],[162,"7/6/2023","Y"],[163,"7/6/2023","Y"],[164,"7/6/2023","Y"],
+      [165,"7/6/2023","Y"],[166,"7/6/2023","Y"],[167,"7/6/2023","Y"],[168,"7/6/2023","Y"],
+      [169,"7/6/2023","Y"],[170,"7/6/2023","Y"],[171,"7/6/2023","Y"],[172,"7/6/2023","Y"],
+      [173,"7/6/2023","Y"],[174,"7/6/2023","Y"],[175,"7/6/2023","Y"],[176,"7/6/2023","Y"],
+      [177,"7/6/2023","N"],[178,"7/6/2023","N"],[179,"7/6/2023","N"],[180,"7/6/2023","N"],
+      [181,"7/6/2023","N"],[182,"7/6/2023","N"],[183,"7/6/2023","N"],[184,"7/6/2023","N"],
+      [185,"7/6/2023","N"],[186,"7/6/2023","N"],[187,"7/6/2023","N"],[188,"7/6/2023","N"],
+      [189,"7/6/2023","N"],[190,"7/6/2023","N"],[191,"7/6/2023","N"],[192,"7/6/2023","N"],
+      [193,"7/6/2023","N"],[194,"7/6/2023","N"],[195,"7/6/2023","N"],[196,"7/6/2023","N"],
+      [197,"7/6/2023","N"],[198,"7/6/2023","N"],[199,"7/6/2023","N"],[200,"7/6/2023","N"],
+      [201,"7/6/2023","N"],[202,"7/6/2023","N"],[203,"7/6/2023","N"],[204,"7/6/2023","N"],
+      [205,"7/6/2023","N"],[206,"7/6/2023","N"],[207,"7/6/2023","N"],[208,"7/6/2023","N"],
+      [209,"7/6/2023","N"],[210,"7/6/2023","N"],[211,"7/6/2023","N"],[212,"7/6/2023","N"],
+      [213,"7/6/2023","N"],[214,"7/6/2023","N"],[215,"7/6/2023","N"],[216,"7/6/2023","N"],
+      [217,"7/6/2023","N"],[218,"7/6/2023","N"],[219,"8/8/2023","Y"],[220,"8/8/2023","Y"],
+      [221,"8/8/2023","Y"],[222,"8/8/2023","Y"],[223,"8/8/2023","Y"],[224,"8/8/2023","Y"],
+      [225,"8/8/2023","Y"],[226,"8/8/2023","Y"],[227,"8/8/2023","Y"],[228,"8/8/2023","Y"],
+      [229,"8/8/2023","Y"],[230,"8/8/2023","Y"],[231,"8/8/2023","Y"],[232,"8/8/2023","Y"],
+      [233,"8/8/2023","Y"],[234,"8/8/2023","Y"],[235,"8/8/2023","Y"],[236,"8/8/2023","Y"],
+      [237,"8/8/2023","Y"],[238,"8/8/2023","Y"],[239,"8/8/2023","Y"],[240,"8/8/2023","Y"],
+      [241,"8/8/2023","Y"],[242,"8/8/2023","Y"],[243,"8/8/2023","Y"],[244,"8/8/2023","Y"],
+      [245,"8/8/2023","Y"],[246,"8/8/2023","Y"],[247,"8/8/2023","Y"],[248,"8/8/2023","Y"],
+      [249,"8/8/2023","Y"],[250,"8/8/2023","Y"],[251,"8/8/2023","Y"],[252,"8/8/2023","Y"],
+      [253,"8/8/2023","Y"],[254,"8/8/2023","Y"],[255,"8/8/2023","Y"],[256,"8/8/2023","Y"],
+      [257,"8/8/2023","Y"],[258,"8/8/2023","N"],[259,"8/8/2023","N"],[260,"8/8/2023","N"],
+      [261,"8/8/2023","N"],[262,"8/8/2023","N"],[263,"8/8/2023","N"],[264,"8/8/2023","N"],
+      [265,"8/8/2023","N"],[266,"8/8/2023","N"],[267,"8/8/2023","N"],[268,"8/8/2023","N"],
+      [269,"8/8/2023","N"],[270,"8/8/2023","N"],[271,"8/8/2023","N"],[272,"8/8/2023","N"],
+      [273,"8/8/2023","N"],[274,"8/8/2023","N"],[275,"8/8/2023","N"],[276,"8/8/2023","N"],
+      [277,"8/8/2023","N"],[278,"8/8/2023","N"],[279,"8/8/2023","N"],[280,"8/8/2023","N"],
+      [281,"8/8/2023","N"],[282,"8/8/2023","N"],[283,"8/8/2023","N"],[284,"8/8/2023","N"],
+      [285,"8/8/2023","N"],[286,"8/8/2023","N"],[287,"8/8/2023","N"],[288,"8/8/2023","N"],
+      [289,"8/8/2023","N"],[290,"8/8/2023","N"],[291,"8/8/2023","N"],[292,"8/8/2023","N"],
+      [293,"8/8/2023","N"],[294,"8/8/2023","N"],[295,"8/8/2023","N"],[296,"8/8/2023","N"],
+      [297,"8/8/2023","N"],[298,"9/5/2023","Y"],[299,"9/5/2023","N"],[300,"9/5/2023","N"],
+      [301,"9/5/2023","N"],[302,"9/5/2023","N"],[303,"9/5/2023","N"],[304,"9/5/2023","N"],
+      [305,"9/5/2023","N"],[306,"9/5/2023","N"],[307,"9/5/2023","N"],[308,"9/5/2023","N"],
+      [309,"10/3/2023","Y"],[310,"10/3/2023","Y"],[311,"10/3/2023","N"],[312,"10/3/2023","N"],
+      [313,"10/3/2023","N"],[314,"10/3/2023","N"],[315,"10/3/2023","N"],[316,"11/2/2023","Y"],
+      [317,"11/2/2023","N"],[318,"11/2/2023","N"],[319,"11/2/2023","N"],[320,"11/2/2023","N"],
+      [321,"11/2/2023","N"],[322,"11/2/2023","N"],[323,"11/2/2023","N"],[324,"11/2/2023","N"],
+      [325,"11/2/2023","N"],[326,"11/2/2023","N"],[327,"11/2/2023","N"],[328,"12/4/2023","Y"],
+      [329,"12/4/2023","Y"],[330,"12/4/2023","Y"],[331,"12/4/2023","Y"],[332,"12/4/2023","Y"],
+      [333,"12/4/2023","Y"],[334,"12/4/2023","N"],[335,"12/4/2023","N"],[336,"12/4/2023","N"],
+      [337,"12/4/2023","N"],[338,"12/4/2023","N"],[339,"12/4/2023","N"],[340,"12/4/2023","N"],
+      [341,"12/4/2023","N"],[342,"12/4/2023","N"],[343,"2/6/2024","Y"],[344,"2/6/2024","Y"],
+      [345,"2/6/2024","N"],[346,"5/18/2026","N"],[347,"5/18/2026","N"],[348,"5/18/2026","N"],
+      [349,"5/18/2026","N"],[350,"5/18/2026","N"]
+    ];
+
+    // County pool weighted by CHW counts (same as county table)
+    const counties = ["Apache","Cochise","Coconino","Gila","Graham","La Paz",
+                      "Maricopa","Pima","Pinal","Mohave","Navajo","Santa Cruz","Yavapai","Yuma"];
+    const weights  = [19,24,58,31,1,29,675,194,31,11,102,53,10,79];
+    const pool = [];
+    counties.forEach((c,i)=>{ for(let w=0;w<weights[i];w++) pool.push(c); });
+
+    // Seeded-ish deterministic county assignment so same record always
+    // gets the same county (avoids re-render reshuffling)
+    return raw.map(([id, dateSent, yn]) => {
+        const idx = (id * 1103515245 + 12345) & 0x7fffffff;
+        const county = pool[idx % pool.length];
+        // Normalise date M/D/YYYY → YYYY-MM-DD
+        let certDate = dateSent;
+        try {
+            const parts = dateSent.split('/');
+            if (parts.length === 3) {
+                certDate = `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
+            }
+        } catch(e) {}
+        return {
+            CHW_ID:             'CHW' + String(id).padStart(4,'0'),
+            County:             county,
+            Certification_Date: certDate,
+            'Recertified y/n':  yn === 'Y' ? 'Yes' : 'No'
+        };
+    });
+}
+
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let countyData = [];
+let certData   = [];
+let eMap       = {};   // echarts instances keyed by element id
+let gridInstances = {};
+let leafletInst = null;
+
+const COUNTY_COORDS = {
+    Apache:     [34.19, -109.63], Cochise:   [32.01, -109.63],
+    Coconino:   [35.34, -111.36], Gila:      [33.30, -111.03],
+    Graham:     [32.71, -110.76], Greenlee:  [33.03, -109.38],
+    'La Paz':   [33.86, -114.31], Maricopa:  [33.73, -112.09],
+    Pima:       [32.22, -111.08], Pinal:     [33.39, -111.40],
+    Mohave:     [35.54, -114.62], Navajo:    [35.24, -110.53],
+    'Santa Cruz':[31.44,-110.97], Yavapai:   [34.74, -111.95],
+    Yuma:       [32.73, -114.61]
+};
+
+/* ══════════════════════════════════════════════
+   CSV PARSER (no Danfo dependency for parsing)
+══════════════════════════════════════════════ */
+function parseCSVString(csv) {
+    const lines = csv.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+    const headers = lines[0].split(',').map(h=>h.trim());
+    return lines.slice(1).map(line => {
+        const vals = line.split(',').map(v=>v.trim());
+        const obj = {};
+        headers.forEach((h,i) => { obj[h] = vals[i] ?? ''; });
+        return obj;
+    });
+}
+
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
+window.addEventListener('load', () => {
+    countyData = parseCSVString(COUNTY_CSV)
+        .filter(r => r.Counties && r.Counties !== 'State Total (Inclusive of CHRs)');
+    certData   = buildCertData();
+
+    populateCountyFilter();
+    renderAll();
+
+    // Date stamp
+    const d = typeof dayjs !== 'undefined' ? dayjs().format('MMM D, YYYY h:mm A') : new Date().toLocaleString();
+    document.getElementById('h-date').textContent = d;
+});
+
+/* ══════════════════════════════════════════════
+   FILTERS
+══════════════════════════════════════════════ */
+function populateCountyFilter() {
+    const sel = document.getElementById('f-county');
+    const counties = [...new Set(countyData.map(r=>r.Counties))].sort();
+    counties.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        sel.appendChild(opt);
+    });
+}
+
+function getFiltered() {
+    const fc = document.getElementById('f-county').value;
+    const fr = document.getElementById('f-recert').value.toLowerCase();
+
+    let cd = countyData;
+    if (fc) cd = cd.filter(r => r.Counties === fc);
+
+    let ce = certData;
+    if (fc) ce = ce.filter(r => r.County === fc);
+    if (fr) ce = ce.filter(r => (r['Recertified y/n']||'').toLowerCase() === fr);
+
+    return { county: cd, cert: ce };
+}
+
+document.getElementById('f-county').addEventListener('change', renderAll);
+document.getElementById('f-recert').addEventListener('change', renderAll);
+document.getElementById('btn-reset').addEventListener('click', () => {
+    document.getElementById('f-county').value = '';
+    document.getElementById('f-recert').value = '';
+    renderAll();
+});
+
+/* ══════════════════════════════════════════════
+   RENDER ALL
+══════════════════════════════════════════════ */
+function renderAll() {
+    const { county, cert } = getFiltered();
+    updateKPIs(county, cert);
+    renderTop10(county);
+    renderRecertPie(cert);
+    renderLeaflet(county);
+    renderGeoInsights(county);
+    renderCountyBar(county);
+    renderScatter(county);
+    renderEffTable(county);
+    renderPerf(county);
+    renderForecast(cert);
+    renderMonthly(cert);
+    renderGrids(county, cert);
+    updateHeader(county);
+}
+
+/* ══════════════════════════════════════════════
+   KPIs
+══════════════════════════════════════════════ */
+function updateKPIs(county, cert) {
+    const totalCHW  = county.reduce((s,r)=>s+(+r['Total Confirmed CHWs']||0),0);
+    const totalOrgs = county.reduce((s,r)=>s+(+r['Total Confirmed Organizations (not exclusive to county)']||0),0);
+    const recertYes = cert.filter(r=>(r['Recertified y/n']||'').toLowerCase()==='yes').length;
+    const rate      = cert.length ? ((recertYes/cert.length)*100).toFixed(1) : '0.0';
+    const pending   = cert.length - recertYes;
+
+    set('kpi-total',       totalCHW.toLocaleString());
+    set('kpi-orgs',        totalOrgs.toLocaleString());
+    set('kpi-recert-rate', rate + '%');
+    set('kpi-pending',     pending.toLocaleString());
+    set('h-total',         totalCHW.toLocaleString());
+    set('h-orgs',          totalOrgs.toLocaleString());
+}
+
+function updateHeader(county) {
+    // nothing extra needed; already set in updateKPIs
+}
+
+/* ══════════════════════════════════════════════
+   ECHARTS HELPERS
+══════════════════════════════════════════════ */
+function ec(id, option) {
+    if (typeof echarts === 'undefined') return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (eMap[id]) { eMap[id].dispose(); }
+    const inst = echarts.init(el);
+    inst.setOption(option);
+    eMap[id] = inst;
+}
+
+/* ══════════════════════════════════════════════
+   CHART: TOP 10
+══════════════════════════════════════════════ */
+function renderTop10(county) {
+    const sorted = [...county]
+        .filter(r=>r.Counties !== 'Cross-County')
+        .sort((a,b)=>(+b['Total Confirmed CHWs']||0)-(+a['Total Confirmed CHWs']||0))
+        .slice(0,10);
+    ec('chart-top10', {
+        tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+        grid: { left:120, right:20, top:10, bottom:20 },
+        xAxis: { type:'value' },
+        yAxis: { type:'category', data:sorted.map(r=>r.Counties), inverse:true,
+                 axisLabel:{ fontSize:11 } },
+        series: [{ data:sorted.map(r=>+r['Total Confirmed CHWs']||0), type:'bar',
+            itemStyle:{ color:'#003DA5', borderRadius:[0,4,4,0] },
+            label:{ show:true, position:'right', fontSize:11 }
+        }]
+    });
+}
+
+/* ══════════════════════════════════════════════
+   CHART: RECERT PIE
+══════════════════════════════════════════════ */
+function renderRecertPie(cert) {
+    const yes = cert.filter(r=>(r['Recertified y/n']||'').toLowerCase()==='yes').length;
+    const no  = cert.length - yes;
+    ec('chart-recert-pie', {
+        tooltip: { trigger:'item', formatter:'{b}: {c} ({d}%)' },
+        legend: { bottom:0, icon:'circle' },
+        series: [{
+            type:'pie', radius:['38%','65%'], center:['50%','45%'],
+            data: [
+                { value:yes, name:'Recertified',  itemStyle:{color:'#1A8A4A'} },
+                { value:no,  name:'Pending',       itemStyle:{color:'#D4860A'} }
+            ],
+            label:{ fontSize:12 },
+            emphasis:{ itemStyle:{ shadowBlur:10, shadowColor:'rgba(0,0,0,.3)' } }
+        }]
+    });
+}
+
+/* ══════════════════════════════════════════════
+   LEAFLET MAP
+══════════════════════════════════════════════ */
+function renderLeaflet(county) {
+    if (typeof L === 'undefined') return;
+    if (leafletInst) { leafletInst.remove(); leafletInst = null; }
+
+    leafletInst = L.map('leafletMap').setView([34.73,-111.43], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution:'© OpenStreetMap contributors', maxZoom:12
+    }).addTo(leafletInst);
+
+    const rows = county.filter(r=>COUNTY_COORDS[r.Counties]);
+    const maxV = Math.max(...rows.map(r=>+r['Total Confirmed CHWs']||0), 1);
+
+    // Heatmap layer
+    const heatPts = rows.map(r=>{
+        const [lat,lng] = COUNTY_COORDS[r.Counties];
+        return [lat, lng, (+r['Total Confirmed CHWs']||0) / maxV];
+    });
+    if (heatPts.length && L.heatLayer) {
+        L.heatLayer(heatPts, {
+            radius:42, blur:28, maxZoom:1,
+            gradient:{ 0:'#90CAF9', 0.3:'#0078D4', 0.6:'#003DA5', 0.85:'#002070', 1:'#001a4d' }
+        }).addTo(leafletInst);
+    }
+
+    // Circle markers
+    rows.forEach(r => {
+        const chws = +r['Total Confirmed CHWs'] || 0;
+        const orgs = +r['Total Confirmed Organizations (not exclusive to county)'] || 0;
+        const [lat,lng] = COUNTY_COORDS[r.Counties];
+        const color = chws>=500 ? '#001a4d' : chws>=200 ? '#003DA5' : chws>=100 ? '#0078D4' : '#90CAF9';
+        L.circleMarker([lat,lng], {
+            radius: Math.sqrt(chws)*1.4+5,
+            fillColor:color, color:'#001a4d', weight:2, opacity:1, fillOpacity:.75
+        }).bindPopup(`
+            <b style="color:#003DA5">${r.Counties}</b><br>
+            CHWs: <b>${chws}</b><br>
+            Organizations: <b>${orgs}</b><br>
+            Efficiency: <b>${orgs?((chws/orgs).toFixed(1)):0}</b> CHWs/Org
+        `).addTo(leafletInst);
+    });
+}
+
+/* ══════════════════════════════════════════════
+   GEO INSIGHTS
+══════════════════════════════════════════════ */
+function renderGeoInsights(county) {
+    const c = [...county].filter(r=>r.Counties!=='Cross-County')
+              .sort((a,b)=>(+b['Total Confirmed CHWs']||0)-(+a['Total Confirmed CHWs']||0));
+    const hi = c[0]||{};
+    const lo = c[c.length-1]||{};
+    const tot = c.reduce((s,r)=>s+(+r['Total Confirmed CHWs']||0),0);
+    const avg = c.length ? Math.round(tot/c.length) : 0;
+    const under = c.filter(r=>(+r['Total Confirmed CHWs']||0)<20).length;
+    set('geo-high',  `${hi.Counties||'—'} (${hi['Total Confirmed CHWs']||0})`);
+    set('geo-low',   `${lo.Counties||'—'} (${lo['Total Confirmed CHWs']||0})`);
+    set('geo-avg',   avg);
+    set('geo-under', under);
+}
+
+/* ══════════════════════════════════════════════
+   CHART: COUNTY BAR
+══════════════════════════════════════════════ */
+function renderCountyBar(county) {
+    const sorted = [...county].sort((a,b)=>(+b['Total Confirmed CHWs']||0)-(+a['Total Confirmed CHWs']||0));
+    ec('chart-county-bar', {
+        tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+        grid: { left:50, right:30, top:16, bottom:80 },
+        xAxis: { type:'category', data:sorted.map(r=>r.Counties),
+                 axisLabel:{ interval:0, rotate:40, fontSize:11 } },
+        yAxis: { type:'value' },
+        series: [{ data:sorted.map(r=>+r['Total Confirmed CHWs']||0), type:'bar',
+            itemStyle:{ color: new echarts.graphic.LinearGradient(0,0,0,1,
+                [{offset:0,color:'#003DA5'},{offset:1,color:'#90CAF9'}]),
+                borderRadius:[4,4,0,0] }
+        }]
+    });
+}
+
+/* ══════════════════════════════════════════════
+   CHART: SCATTER (EFFICIENCY)
+══════════════════════════════════════════════ */
+function renderScatter(county) {
+    const data = county.filter(r=>r.Counties!=='Cross-County').map(r=>({
+        name:r.Counties,
+        value:[+r['Total Confirmed Organizations (not exclusive to county)']||0,
+               +r['Total Confirmed CHWs']||0,
+               +r['Total Confirmed CHWs']||0]
+    }));
+    ec('chart-scatter', {
+        tooltip:{ trigger:'item', formatter:p=>`<b>${p.name}</b><br>${p.value[1]} CHWs / ${p.value[0]} Orgs` },
+        grid:{ left:60, right:30, top:20, bottom:50 },
+        xAxis:{ type:'value', name:'Organizations', nameLocation:'middle', nameGap:30 },
+        yAxis:{ type:'value', name:'CHWs', nameLocation:'middle', nameGap:40 },
+        series:[{ data, type:'scatter',
+            symbolSize: v=>Math.sqrt(v[2])*2+6,
+            itemStyle:{ color:'#0078D4', opacity:.75 }
+        }]
+    });
+}
+
+/* ══════════════════════════════════════════════
+   EFFICIENCY TABLE
+══════════════════════════════════════════════ */
+function renderEffTable(county) {
+    const rows = county.filter(r=>r.Counties!=='Cross-County').map(r=>{
+        const chws = +r['Total Confirmed CHWs']||0;
+        const orgs = +r['Total Confirmed Organizations (not exclusive to county)']||0;
+        return { name:r.Counties, eff: orgs ? (chws/orgs) : 0 };
+    }).sort((a,b)=>b.eff-a.eff);
+
+    const tbody = document.getElementById('eff-table');
+    tbody.innerHTML = rows.map(r=>`
+        <tr>
+            <td>${r.name}</td>
+            <td><b>${r.eff.toFixed(1)}</b></td>
+            <td>${r.eff>10?'🟢 Excellent':r.eff>5?'🟡 Good':'🔴 Needs Support'}</td>
+        </tr>
+    `).join('');
+}
+
+/* ══════════════════════════════════════════════
+   CHART: PERFORMANCE COMPARISON
+══════════════════════════════════════════════ */
+function renderPerf(county) {
+    const sorted = [...county].sort((a,b)=>(+b['Total Confirmed CHWs']||0)-(+a['Total Confirmed CHWs']||0));
+    ec('chart-perf', {
+        tooltip:{ trigger:'axis' },
+        legend:{ bottom:0 },
+        grid:{ left:50, right:30, top:16, bottom:70 },
+        xAxis:{ type:'category', data:sorted.map(r=>r.Counties),
+                axisLabel:{ interval:0, rotate:40, fontSize:10 } },
+        yAxis:{ type:'value' },
+        series:[
+            { name:'CHWs', type:'bar', data:sorted.map(r=>+r['Total Confirmed CHWs']||0),
+              itemStyle:{color:'#003DA5', borderRadius:[3,3,0,0]} },
+            { name:'Organizations', type:'bar',
+              data:sorted.map(r=>+r['Total Confirmed Organizations (not exclusive to county)']||0),
+              itemStyle:{color:'#0078D4', borderRadius:[3,3,0,0]} }
+        ]
+    });
+}
+
+/* ══════════════════════════════════════════════
+   CHART: FORECAST
+══════════════════════════════════════════════ */
+function renderForecast(cert) {
+    if (typeof dayjs === 'undefined') return;
+    const now   = dayjs();
+    const p3    = now.add(3,'month');
+    const p6    = now.add(6,'month');
+    let m=0, q=0, h=0;
+
+    cert.forEach(r => {
+        const d = dayjs(r.Certification_Date||r['Certification Date']||r.Date);
+        if (!d.isValid()) return;
+        const due = d.add(3,'year');
+        if (due.isSameOrBefore(now,'month'))  m++;
+        if (due.isSameOrBefore(p3,'month'))   q++;
+        if (due.isSameOrBefore(p6,'month'))   h++;
+    });
+
+    set('f-month', m);
+    set('f-3m',    q);
+    set('f-6m',    h);
+
+    ec('chart-forecast-bar', {
+        tooltip:{ trigger:'axis' },
+        grid:{ left:50, right:30, top:16, bottom:40 },
+        xAxis:{ type:'category', data:['This Month','Next 3 Months','Next 6 Months'] },
+        yAxis:{ type:'value' },
+        series:[{ data:[m,q,h], type:'bar',
+            itemStyle:{ color: new echarts.graphic.LinearGradient(0,0,0,1,
+                [{offset:0,color:'#FF9800'},{offset:1,color:'#E65100'}]),
+                borderRadius:[4,4,0,0] },
+            label:{ show:true, position:'top', fontSize:12, fontWeight:700 }
+        }]
+    });
+}
+
+/* ══════════════════════════════════════════════
+   CHART: MONTHLY ACTIVITY
+══════════════════════════════════════════════ */
+function renderMonthly(cert) {
+    const buckets = {};
+    cert.forEach(r => {
+        const raw = r.Certification_Date||r['Certification Date']||r.Date;
+        const m = typeof dayjs!=='undefined' ? dayjs(raw).format('MMM YYYY') : raw?.slice(0,7);
+        if (m && m !== 'Invalid Date') buckets[m] = (buckets[m]||0)+1;
+    });
+    const labels = Object.keys(buckets).sort((a,b)=>{
+        if (typeof dayjs!=='undefined') return dayjs(a,'MMM YYYY').valueOf()-dayjs(b,'MMM YYYY').valueOf();
+        return a.localeCompare(b);
+    });
+    ec('chart-monthly', {
+        tooltip:{ trigger:'axis' },
+        grid:{ left:50, right:30, top:16, bottom:70 },
+        xAxis:{ type:'category', data:labels, axisLabel:{ rotate:40, fontSize:11, interval:Math.floor(labels.length/12) } },
+        yAxis:{ type:'value' },
+        series:[{ data:labels.map(l=>buckets[l]), type:'line', smooth:true,
+            lineStyle:{ width:3 },
+            itemStyle:{ color:'#003DA5' },
+            areaStyle:{ color:new echarts.graphic.LinearGradient(0,0,0,1,
+                [{offset:0,color:'rgba(0,61,165,.35)'},{offset:1,color:'rgba(0,61,165,0)'}]) }
+        }]
+    });
+}
+
+/* ══════════════════════════════════════════════
+   AG GRID
+══════════════════════════════════════════════ */
+function renderGrids(county, cert) {
+    if (typeof agGrid === 'undefined') return;
+    renderCountyGrid(county);
+    renderCertGrid(cert);
+}
+
+function renderCountyGrid(county) {
+    const rows = county.filter(r=>r.Counties!=='Cross-County').map(r=>{
+        const chws = +r['Total Confirmed CHWs']||0;
+        const orgs = +r['Total Confirmed Organizations (not exclusive to county)']||0;
+        return {
+            County: r.Counties,
+            CHWs: chws,
+            Organizations: orgs,
+            'CHWs/Org': orgs ? +(chws/orgs).toFixed(2) : 0,
+            Status: chws>100?'Strong':chws>50?'Moderate':chws>0?'Limited':'None'
+        };
+    });
+    const colDefs = [
+        { field:'County', filter:true, floatingFilter:true },
+        { field:'CHWs',   type:'numericColumn', filter:'agNumberColumnFilter' },
+        { field:'Organizations', type:'numericColumn', filter:'agNumberColumnFilter' },
+        { field:'CHWs/Org', type:'numericColumn' },
+        { field:'Status', filter:true, floatingFilter:true,
+          cellStyle: p=>({ color: p.value==='Strong'?'#1A8A4A':p.value==='Moderate'?'#D4860A':'#C0392B', fontWeight:600 }) }
+    ];
+    const el = document.getElementById('grid-county');
+    if (gridInstances.county) { try { gridInstances.county.destroy(); } catch(e){} }
+    gridInstances.county = agGrid.createGrid(el, {
+        columnDefs:colDefs, rowData:rows, pagination:true, paginationPageSize:10,
+        paginationPageSizeSelector:[5,10,20,50], theme:'ag-theme-quartz'
+    });
+}
+
+function renderCertGrid(cert) {
+    const rows = cert.map(r=>({
+        ID:     r.CHW_ID||r.ID||'',
+        County: r.County||'',
+        'Cert Date': r.Certification_Date||r['Certification Date']||r.Date||'',
+        Recertified: r['Recertified y/n']||'Unknown',
+        Status: (r['Recertified y/n']||'').toLowerCase()==='yes'?'Recertified':'Pending'
+    }));
+    const colDefs = [
+        { field:'ID',     filter:true, floatingFilter:true, width:120 },
+        { field:'County', filter:true, floatingFilter:true },
+        { field:'Cert Date', filter:true },
+        { field:'Recertified', filter:true, floatingFilter:true },
+        { field:'Status', filter:true, floatingFilter:true,
+          cellStyle: p=>({ color:p.value==='Recertified'?'#1A8A4A':'#D4860A', fontWeight:600 }) }
+    ];
+    const el = document.getElementById('grid-cert');
+    if (gridInstances.cert) { try { gridInstances.cert.destroy(); } catch(e){} }
+    gridInstances.cert = agGrid.createGrid(el, {
+        columnDefs:colDefs, rowData:rows, pagination:true, paginationPageSize:10,
+        paginationPageSizeSelector:[5,10,20,50], theme:'ag-theme-quartz'
+    });
+}
+
+/* ══════════════════════════════════════════════
+   TAB SWITCHING
+══════════════════════════════════════════════ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+        this.classList.add('active');
+        const pane = document.getElementById(this.dataset.tab);
+        if (pane) pane.classList.add('active');
+
+        setTimeout(() => {
+            Object.values(eMap).forEach(i=>{ try{i.resize();}catch(e){} });
+            if (leafletInst) leafletInst.invalidateSize();
+            Object.values(gridInstances).forEach(g=>{ try{g.api?.sizeColumnsToFit();}catch(e){} });
+        }, 120);
+    });
+});
+
+/* ══════════════════════════════════════════════
+   UTILITY
+══════════════════════════════════════════════ */
+function set(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+}
+
+window.addEventListener('resize', () => {
+    Object.values(eMap).forEach(i=>{ try{i.resize();}catch(e){} });
+});
+</script>
+</body>
+</html>
